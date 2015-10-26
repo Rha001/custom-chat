@@ -1,4 +1,5 @@
 var socket = io();
+socket.emit('new room');
 $('form').submit(function(){
     socket.emit('chat message', { client_id: 2000, msg: $('#m').val() });
     $('#m').val('');
