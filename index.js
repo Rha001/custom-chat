@@ -35,31 +35,33 @@ app.all('/*', function(req, res) {
     //res.render(404, '404');
 });
 io.sockets.on('connection', function(socket){
+	console.log('Someone conected !')
 	socket.client_id = shortid.generate()
 	var CHAT_HISTORY = [];
 	socket.on('new room', function(){
-		console.log('Rooms: ' + 'asdasdasdasdasdasdad' );
 		CHAT_ROOMS++;
-		io.emit('room count', CHAT_ROOMS );
 	});
-	
+	socket.on('new client', function(){
+		//console.log('Theres a new Client !')
+		CHAT_HISTORY.push( { 'client' : socket.client_id } )
+		io.emit('new client', {'client' : socket.client_id } );
+	});
 	socket.on('chat message', function( data ){
 		if( data.msg.trim() != '' ){
 			var message = {};
-			//console.log( data.request );
 			console.log('message: ' + data.msg + ' from: ' + socket.client_id );
-			if( data.client_id === 1000 )
-				io.emit('chat message client', data.msg);
-			else
-				io.emit('chat message server', data.msg);
-
+			io.emit('chat message client', data.msg);
 			CHAT_HISTORY.push( {'msg':data.msg} );
-			//console.log( socket.handshake.session.ssid );
 		}
 	});
+	socket.on('chat response', function( data ){
+		if( data.msg.trim() != '' )
+			io.emit('chat message server', data.msg);
+	});
+	socket.on('response', function(msg){
+		CHAT_HISTORY.push( { 'resp' : msg.msg } )
+	});
 	socket.on('disconnect', function(){
-		console.log('Rooms: ' + 'asdasdasdasdasdasdad' );
-		CHAT_HISTORY.push( { 'client' : socket.client_id } )
 		console.log( CHAT_HISTORY );
 		CHAT_HISTORY = [];
 	});
@@ -68,5 +70,11 @@ http.listen(3000, function(){
 	console.log('listening on *:3000');
 });
 process.on('uncaughtException', function (err) {
-    console.log(err);
-}); 
+	console.log(err);
+});
+
+
+
+
+
+
