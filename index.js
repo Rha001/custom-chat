@@ -3,14 +3,9 @@ var app 			= express();
 var http 			= require('http').Server(app);//server Library
 var io 				= require('socket.io')(http);//sockets Library
 var bodyParser 		= require('body-parser');//Library to manage POST and GET data
-//var session 		= require('express-session');//Sessions Library
-//var sharedsession 	= require('express-socket.io-session');//Library to read sessions inside the sockets
-var shortid 		= require('shortid');//Library to generate some random ids
-
-//var mongoose 	= require('mongoose');
 //var process 	= require('process');
 var CHAT_ROOMS = 0;
-
+var clients = {};//object to store all socket clients
 app.set('view engine', 'jade');
 app.use(express.static('public'));
 app.use( bodyParser.urlencoded({ extended: true }) );
@@ -20,10 +15,9 @@ app.get('/', function(req, res){
 	res.render('login');
 });
 app.post('/chat', function(req, res){
-	var nombre 	 = req.body.nombre;
-	var problema = req.body.problema;
-	if( nombre.trim()  != '' && problema.trim()  != '' )
-		res.render('chat', { name: nombre, problema: problema, ssid: 'Id from session' });
+	var clientName 	 = req.body.clientName;
+	if( clientName.trim() )
+		res.render('chat', { clientName: clientName });
 	else
 		res.redirect('/');
 });
@@ -36,27 +30,25 @@ app.all('/*', function(req, res) {
 });
 io.sockets.on('connection', function(socket){
 	console.log('Someone conected !')
-	socket.client_id = shortid.generate()
+	socket.client_id = socket.id//shortid.generate()
+	clients[socket.id] = socket
 	var CHAT_HISTORY = [];
-	socket.on('new room', function(){
-		CHAT_ROOMS++;
-	});
 	socket.on('new client', function(){
 		//console.log('Theres a new Client !')
 		CHAT_HISTORY.push( { 'client' : socket.client_id } )
-		io.emit('new client', {'client' : socket.client_id } );
+		io.emit('new client', socket.client_id );
 	});
 	socket.on('chat message', function( data ){
 		if( data.msg.trim() != '' ){
-			var message = {};
-			console.log('message: ' + data.msg + ' from: ' + socket.client_id );
-			io.emit('chat message client', data.msg);
+			//console.log('message: ' + data.msg + ' from: ' + socket.client_id );
+			io.emit('chat message client', {msg: data.msg, from: socket.client_id});
 			CHAT_HISTORY.push( {'msg':data.msg} );
 		}
 	});
-	socket.on('chat response', function( data ){
-		if( data.msg.trim() != '' )
-			io.emit('chat message server', data.msg);
+	socket.on('admin response', function( data ){
+		if( data.msg.trim() != '' ){
+			clients[data.to].emit('chat message server', data.msg);
+		}	
 	});
 	socket.on('response', function(msg){
 		CHAT_HISTORY.push( { 'resp' : msg.msg } )
@@ -64,6 +56,7 @@ io.sockets.on('connection', function(socket){
 	socket.on('disconnect', function(){
 		console.log( CHAT_HISTORY );
 		CHAT_HISTORY = [];
+		io.emit('close chat', socket.client_id );
 	});
 });
 http.listen(3000, function(){

@@ -6,8 +6,8 @@ $(document).ready(function(){
 		$('#m').val('');
 		return false;
 	});
-	socket.on('chat message client', function(msg){
-		$('#messages').append($('<li class="client">').text(msg));
+	socket.on('chat message client', function(data){
+		$('#messages').append($('<li class="client">').text(data.msg));
 	});
 	socket.on('chat message server', function(msg){
 		$('#messages').append($('<li class="server">').text(msg));
